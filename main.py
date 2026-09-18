@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Session, select
 from database import engine, get_session
-from models import Product, User
+from models import Product, User, Order
 from auth import hash_password, verify_password, create_access_token, decode_access_token
 from jose import JWTError
 
@@ -77,3 +77,21 @@ def create_item(name: str, price: float, session: Session = Depends(get_session)
     session.commit()
     session.refresh(item)
     return item
+
+# ---- Orders ----
+@app.post("/orders")
+def create_order(product_id: int, quantity: int = 1, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    order = Order(buyer_id=current_user.id, product_id=product_id, quantity=quantity)
+    session.add(order)
+    session.commit()
+    session.refresh(order)
+    return order
+
+@app.get("/orders")
+def get_my_orders(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    orders = session.exec(select(Order).where(Order.buyer_id == current_user.id)).all()
+    return orders
