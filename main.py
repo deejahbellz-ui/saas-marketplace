@@ -1,6 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException
+import os
+import shutil
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel, Session, select
 from database import engine, get_session
 from models import Product, User, Order
@@ -17,6 +20,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.on_event("startup")
 def on_startup():
@@ -71,8 +78,8 @@ def get_items(session: Session = Depends(get_session)):
     return items
 
 @app.post("/items")
-def create_item(name: str, price: float, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    item = Product(name=name, price=price, owner_id=current_user.id)
+def create_item(name: str, price: float, image_url: str = None, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    item = Product(name=name, price=price, owner_id=current_user.id, image_url=image_url)
     session.add(item)
     session.commit()
     session.refresh(item)
@@ -95,3 +102,11 @@ def create_order(product_id: int, quantity: int = 1, session: Session = Depends(
 def get_my_orders(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     orders = session.exec(select(Order).where(Order.buyer_id == current_user.id)).all()
     return orders
+
+# ---- Image upload ----
+@app.post("/upload")
+def upload_image(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"filename": file.filename, "url": f"http://127.0.0.1:8000/uploads/{file.filename}"}
