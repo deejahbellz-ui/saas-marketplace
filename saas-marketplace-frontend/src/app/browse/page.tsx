@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import ProductCard from "@/components/ProductCard";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useCart } from "@/context/CartContext";
 
-const products = [
-  { name: "Tote Bag", price: "₦15,000" },
-  { name: "Jersey Veil", price: "₦4,000" },
-  { name: "Vintage Scarf", price: "₦3,500" },
-  { name: "Plain Scarf", price: "₦3,000" },
-];
+type Product = {
+  id: number;
+  name: string;
+  price: number;
+  image_url?: string;
+};
 
 export default function Browse() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
+  const { addToCart } = useCart();
+
+  useEffect(() => {
+    fetch("https://saas-marketplace-ngmm.onrender.com/items")
+      .then((res) => res.json())
+      .then((data) => setProducts(data));
+  }, []);
 
   const filtered = products.filter((product) =>
     product.name.toLowerCase().includes(search.toLowerCase())
@@ -19,7 +28,10 @@ export default function Browse() {
 
   return (
     <main className="min-h-screen px-6 py-12">
-      <h1 className="text-3xl font-bold mb-6">Browse Collection</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Browse Collection</h1>
+        <Link href="/cart" className="text-sm underline">View Cart</Link>
+      </div>
 
       <input
         type="text"
@@ -31,7 +43,23 @@ export default function Browse() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {filtered.map((product) => (
-          <ProductCard key={product.name} name={product.name} price={product.price} />
+          <div key={product.id} className="border border-gray-200 rounded-lg p-4">
+            {product.image_url && (
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="w-full h-40 object-cover rounded-lg mb-3"
+              />
+            )}
+            <h2 className="font-semibold">{product.name}</h2>
+            <p className="text-gray-600 mb-3">₦{product.price}</p>
+            <button
+              onClick={() => addToCart(product)}
+              className="bg-black text-white text-sm px-4 py-2 rounded-lg"
+            >
+              Add to Cart
+            </button>
+          </div>
         ))}
       </div>
     </main>
