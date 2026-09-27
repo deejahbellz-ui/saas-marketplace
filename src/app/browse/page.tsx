@@ -17,7 +17,7 @@ export default function Browse() {
   const { addToCart } = useCart();
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/items")
+    fetch("https://saas-marketplace-ngmm.onrender.com/items")
       .then((res) => res.json())
       .then((data) => setProducts(data));
   }, []);

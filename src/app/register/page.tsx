@@ -15,7 +15,7 @@ export default function Register() {
     setError("");
 
     const res = await fetch(
-      `http://127.0.0.1:8000/register?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
+      `https://saas-marketplace-ngmm.onrender.com/register?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
       { method: "POST" }
     );
 
