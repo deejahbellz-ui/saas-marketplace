@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <main
       className="min-h-screen flex flex-col items-center justify-center px-6 bg-cover bg-center"
-      style={{ backgroundImage: "url('/logo.jpg')" }}
+      style={{ backgroundImage: "url('/logo.png')" }}
     >
       <div className="bg-white/80 rounded-xl p-10 flex flex-col items-center">
         <h1 className="text-4xl font-bold mb-4">Kubys</h1>
