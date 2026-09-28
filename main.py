@@ -10,6 +10,8 @@ from models import Product, User, Order
 from auth import hash_password, verify_password, create_access_token, decode_access_token
 from jose import JWTError
 
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip().lower()
+
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -34,7 +36,7 @@ def on_startup():
 def health_check():
     return {"status": "ok"}
 
-# ---- Auth dependency ----
+# ---- Auth dependencies ----
 def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)) -> User:
     try:
         payload = decode_access_token(token)
@@ -48,6 +50,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Dep
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+def is_admin_user(user: User) -> bool:
+    return bool(ADMIN_EMAIL) and user.email.strip().lower() == ADMIN_EMAIL
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if not is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    return current_user
 
 # ---- Registration ----
 @app.post("/register")
@@ -72,15 +82,18 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = D
     token = create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
-# ---- Items (now protected) ----
+@app.get("/me")
+def me(current_user: User = Depends(get_current_user)):
+    return {"email": current_user.email, "is_admin": is_admin_user(current_user)}
+
+# ---- Items (adding is admin only) ----
 @app.get("/items")
 def get_items(session: Session = Depends(get_session)):
-    items = session.exec(select(Product)).all()
-    return items
+    return session.exec(select(Product)).all()
 
 @app.post("/items")
-def create_item(name: str, price: float, image_url: str = None, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    item = Product(name=name, price=price, owner_id=current_user.id, image_url=image_url)
+def create_item(name: str, price: float, image_url: str = None, session: Session = Depends(get_session), admin: User = Depends(require_admin)):
+    item = Product(name=name, price=price, owner_id=admin.id, image_url=image_url)
     session.add(item)
     session.commit()
     session.refresh(item)
@@ -101,13 +114,27 @@ def create_order(product_id: int, quantity: int = 1, session: Session = Depends(
 
 @app.get("/orders")
 def get_my_orders(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    orders = session.exec(select(Order).where(Order.buyer_id == current_user.id)).all()
-    return orders
+    return session.exec(select(Order).where(Order.buyer_id == current_user.id)).all()
 
-# ---- Image upload ----
+@app.get("/admin/orders")
+def all_orders(session: Session = Depends(get_session), admin: User = Depends(require_admin)):
+    result = []
+    for o in session.exec(select(Order)).all():
+        buyer = session.get(User, o.buyer_id)
+        product = session.get(Product, o.product_id)
+        result.append({
+            "id": o.id,
+            "buyer_email": buyer.email if buyer else "unknown",
+            "product_name": product.name if product else "deleted product",
+            "price": product.price if product else 0,
+            "quantity": o.quantity,
+        })
+    return result
+
+# ---- Image upload (admin only) ----
 @app.post("/upload")
-def upload_image(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+def upload_image(file: UploadFile = File(...), admin: User = Depends(require_admin)):
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    return {"filename": file.filename, "url": f"http://127.0.0.1:8000/uploads/{file.filename}"}
+    return {"filename": file.filename, "url": f"https://saas-marketplace-ngmm.onrender.com/uploads/{file.filename}"}
