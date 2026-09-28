@@ -4,31 +4,35 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
+const API = "https://saas-marketplace-ngmm.onrender.com";
+
 export default function AddProduct() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
-  const { token } = useAuth();
+  const { token, isAdmin } = useAuth();
   const router = useRouter();
+
+  if (!isAdmin) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-6">
+        <p>Only the store admin can add products.</p>
+      </main>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!token) {
-      setError("You must be logged in to add a product.");
-      return;
-    }
-
     let imageUrl = "";
 
-    // Step 1: upload the image first, if one was selected
     if (file) {
       const formData = new FormData();
       formData.append("file", file);
 
-      const uploadRes = await fetch("https://saas-marketplace-ngmm.onrender.com/upload", {
+      const uploadRes = await fetch(`${API}/upload`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -43,9 +47,8 @@ export default function AddProduct() {
       imageUrl = uploadData.url;
     }
 
-    // Step 2: create the product, including the image URL
     const productRes = await fetch(
-      `https://saas-marketplace-ngmm.onrender.com/items?name=${encodeURIComponent(name)}&price=${price}&image_url=${encodeURIComponent(imageUrl)}`,
+      `${API}/items?name=${encodeURIComponent(name)}&price=${price}&image_url=${encodeURIComponent(imageUrl)}`,
       {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -69,14 +72,14 @@ export default function AddProduct() {
           placeholder="Product name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="border border-gray-300 rounded-lg px-4 py-2"
+          className="border border-gray-300 rounded-lg px-4 py-2 text-black"
         />
         <input
           type="number"
           placeholder="Price (₦)"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          className="border border-gray-300 rounded-lg px-4 py-2"
+          className="border border-gray-300 rounded-lg px-4 py-2 text-black"
         />
         <input
           type="file"
@@ -84,8 +87,8 @@ export default function AddProduct() {
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           className="border border-gray-300 rounded-lg px-4 py-2"
         />
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-        <button type="submit" className="bg-black text-white rounded-lg px-4 py-2">
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+        <button type="submit" className="bg-white text-black rounded-lg px-4 py-2">
           Add Product
         </button>
       </form>

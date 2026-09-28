@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 type Product = {
   id: number;
@@ -15,6 +16,7 @@ export default function Browse() {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const { addToCart } = useCart();
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     fetch("https://saas-marketplace-ngmm.onrender.com/items")
@@ -31,7 +33,8 @@ export default function Browse() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Browse Collection</h1>
         <div className="flex gap-6 text-sm underline">
-          <Link href="/add-product">Add Product</Link>
+          {isAdmin && <Link href="/add-product">Add Product</Link>}
+          {isAdmin && <Link href="/admin/orders">Orders</Link>}
           <Link href="/cart">View Cart</Link>
         </div>
       </div>
