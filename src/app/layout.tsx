@@ -25,7 +25,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col text-white">
+        <div
+          className="fixed inset-0 -z-10 bg-cover bg-center"
+          style={{ backgroundImage: "url('/logo.png')" }}
+        />
+        <div className="fixed inset-0 -z-10 bg-black/70" />
         <AuthProvider>
           <CartProvider>{children}</CartProvider>
         </AuthProvider>
